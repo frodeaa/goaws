@@ -5,13 +5,13 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"net/http"
-	"strings"
-	"time"
-
 	"github.com/p4tin/goaws/app"
 	"github.com/p4tin/goaws/app/common"
 	log "github.com/sirupsen/logrus"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 func init() {
@@ -216,6 +216,8 @@ func GetSubscriptionAttributes(w http.ResponseWriter, req *http.Request) {
 				entry = app.SubscriptionAttributeEntry{Key: "Protocol", Value: sub.Protocol}
 				entries = append(entries, entry)
 				entry = app.SubscriptionAttributeEntry{Key: "Endpoint", Value: sub.EndPoint}
+				entries = append(entries, entry)
+				entry = app.SubscriptionAttributeEntry{Key: "RawMessageDelivery", Value: strconv.FormatBool(sub.Raw)}
 				entries = append(entries, entry)
 
 				if sub.FilterPolicy != nil {
