@@ -290,6 +290,61 @@ func TestSubscribehandler_POST_Success(t *testing.T) {
 	}
 }
 
+func TestSubscribehandler_WithAttributes_POST_Success(t *testing.T) {
+	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
+	// pass 'nil' as the third parameter.
+	req, err := http.NewRequest("POST", "/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	topicName := "UnitTestTopic1"
+	topicArn := "arn:aws:sns:local:000000000000:" + topicName
+
+	form := url.Values{}
+	form.Add("TopicArn", topicArn)
+	form.Add("Protocol", "sqs")
+	form.Add("Endpoint", "http://localhost:4100/queue/noqueue1-sub-attributes")
+
+	// Create subscription with Attributes
+	form.Add("Attributes.entry.1.key", "RawMessageDelivery")
+	form.Add("Attributes.entry.1.value", "true")
+	form.Add("Attributes.entry.2.key", "FilterPolicy")
+	form.Add("Attributes.entry.2.value", "{\"foo\": [\"bar\"]}")
+	req.PostForm = form
+
+	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(Subscribe)
+
+	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
+	// directly and pass in our Request and ResponseRecorder.
+	handler.ServeHTTP(rr, req)
+
+	// Check the status code is what we expect.
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	// Check the response body is what we expect.
+	expected := "</SubscriptionArn>"
+	if !strings.Contains(rr.Body.String(), expected) {
+		t.Errorf("handler returned unexpected body: got %v want %v",
+			rr.Body.String(), expected)
+	}
+
+	sub := app.SyncTopics.Topics[topicName].Subscriptions[1]
+
+	if !sub.Raw {
+		t.Errorf("RawMessageDelivery attributes has not been applied")
+	}
+
+	if (*sub.FilterPolicy)["foo"][0] != "bar" {
+		t.Errorf("filter policy has not been applied")
+	}
+}
+
 func TestPublish_No_Queue_Error_handler_POST_Success(t *testing.T) {
 	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
 	// pass 'nil' as the third parameter.

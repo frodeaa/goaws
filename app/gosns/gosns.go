@@ -83,6 +83,24 @@ func Subscribe(w http.ResponseWriter, req *http.Request) {
 	subArn = topicArn + ":" + subArn
 	subscription.SubscriptionArn = subArn
 
+	for key, _ := range req.Form {
+		if strings.HasPrefix(key, "Attributes.entry") && strings.HasSuffix(key, ".key") {
+			attribute := req.Form.Get(key)
+			value := req.Form.Get(strings.Replace(key, ".key", ".value", 1))
+			if attribute == "FilterPolicy" {
+				filterPolicy := &app.FilterPolicy{}
+				err := json.Unmarshal([]byte(value), filterPolicy)
+				if err != nil {
+					createErrorResponse(w, req, "ValidationError")
+					return
+				}
+				subscription.FilterPolicy = filterPolicy
+			} else if attribute == "RawMessageDelivery" {
+				subscription.Raw = value == "true"
+			}
+		}
+	}
+
 	if app.SyncTopics.Topics[topicName] != nil {
 		app.SyncTopics.Lock()
 		isDuplicate := false
